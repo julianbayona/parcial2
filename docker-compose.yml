@@ -1,0 +1,68 @@
+services:
+
+  traefik:
+    image: traefik:v3.5
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.dashboard=true"
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - gateway-network
+    labels:
+      - "traefik.enable=true"
+
+      # Dashboard
+      - "traefik.http.routers.traefik.rule=Host(`sharizar.localhost`) && PathPrefix(`/dashboard`)"
+      - "traefik.http.routers.traefik.entrypoints=web"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.middleware.strip-dashboard.stripPrefix.prefixes=/dashboard"
+      - "traefik.http.routers.traefik.middlewares=strip-dashboard"
+
+
+
+  neo4j:
+    image: neo4j:5.22.0-community
+    restart: always
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER}/${NEO4J_PASSWORD}"
+    volumes:
+      - neo4j_data:/data
+      - ./import:/import
+    networks:
+      - gateway-network
+
+  backend:
+    build: ./backend
+    restart: always
+    depends_on:
+      - neo4j
+    env_file:
+      - .env
+    networks:
+      - gateway-network
+    labels:
+      - "traefik.enable=true"
+
+      # API disponible en api.localhost/api/
+      - "traefik.http.routers.backend.rule=Host(`pikachu.localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+
+      # Middleware stripPrefix
+      - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
+
+      # Aplica el middleware junto a los otros
+      - "traefik.http.routers.backend.middlewares=strip-api,api-ratelimit,api-errors"
+
+volumes:
+  neo4j_data:
+    driver: local
+
+networks:
+  gateway-network:
+    driver: bridge

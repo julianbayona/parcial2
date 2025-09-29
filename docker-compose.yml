@@ -1,0 +1,72 @@
+services:
+
+  traefik:
+    image: traefik:v3.5
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.dashboard=true"
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - parcial-network
+    labels:
+      - "traefik.enable=true"
+
+      # Dashboard
+      - "traefik.http.routers.traefik.rule=Host(`charizard.localhost`) && PathPrefix(`/`)"
+      - "traefik.http.routers.traefik.entrypoints=web"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+      # Middleware global de errores
+      - "traefik.http.middlewares.global-errors.errors.status=400-599"
+      - "traefik.http.middlewares.global-errors.errors.service=errorpages"
+      - "traefik.http.middlewares.global-errors.errors.query=/{status}.html"
+
+      # Router global que atrapa todo
+      - "traefik.http.routers.catchall.rule=HostRegexp(`{host:.+}`)"
+      - "traefik.http.routers.catchall.entrypoints=web"
+      - "traefik.http.routers.catchall.middlewares=global-errors"
+      - "traefik.http.routers.catchall.service=errorpages"
+
+
+  neo4j:
+    image: neo4j:5.22.0-community
+    restart: always
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER}/${NEO4J_PASSWORD}"
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    networks:
+      - parcial-network
+
+  backend:
+    build: ./backend
+    restart: always
+    depends_on:
+      - neo4j
+    env_file:
+      - .env
+    networks:
+      - parcial-network
+    labels:
+      - "traefik.enable=true"
+
+      # API disponible en api.localhost/api/
+      - "traefik.http.routers.backend.rule=Host(`snorlax.localhost`) && PathPrefix(`/`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+
+volumes:
+  neo4j_data:
+    driver: local
+
+networks:
+  parcial-network:
+    driver: bridge

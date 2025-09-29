@@ -32,7 +32,6 @@ services:
       - "traefik.http.routers.catchall.middlewares=global-errors"
       - "traefik.http.routers.catchall.service=errorpages"
 
-
   neo4j:
     image: neo4j:5.22.0-community
     restart: always
@@ -46,6 +45,7 @@ services:
     networks:
       - parcial-network
 
+
   backend:
     build: ./backend
     restart: always
@@ -55,6 +55,7 @@ services:
       - .env
     networks:
       - parcial-network
+
     labels:
       - "traefik.enable=true"
 
@@ -62,6 +63,16 @@ services:
       - "traefik.http.routers.backend.rule=Host(`snorlax.localhost`) && PathPrefix(`/`)"
       - "traefik.http.routers.backend.entrypoints=web"
       - "traefik.http.services.backend.loadbalancer.server.port=3000"
+
+      - "traefik.http.routers.backend.rule=Host(`pikachu.localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+
+      # Middleware stripPrefix
+      - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
+
+      # Aplica el middleware junto a los otros
+      - "traefik.http.routers.backend.middlewares=strip-api,api-ratelimit,api-errors"
 
 volumes:
   neo4j_data:

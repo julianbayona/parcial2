@@ -1,0 +1,3 @@
+Middleware Rate limit: este control es el que limita la cantidad maxima de personas que pueden ser atendidos por los servicios disponibles del aeropuerto.
+
+Middleware Basic Auth: Solo el personal autorizado puede tener acceso a la información de los usuarios.

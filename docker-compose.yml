@@ -49,15 +49,54 @@ services:
       - "traefik.enable=true"
 
       # API disponible en api.localhost/api/
-      - "traefik.http.routers.backend.rule=Host(`pikachu.localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.rule=Host(`api.localhost`) && PathPrefix(`/api`)"
       - "traefik.http.routers.backend.entrypoints=web"
-      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+      - "traefik.http.routers.backend.service=backend-service"
 
+      
       # Middleware stripPrefix
       - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/api"
 
       # Aplica el middleware junto a los otros
-      - "traefik.http.routers.backend.middlewares=strip-api,api-ratelimit,api-errors"
+      - "traefik.http.routers.backend.middlewares=strip-api"
+
+  backend2:
+      build: ./backend
+      restart: always
+      depends_on:
+        - neo4j
+      env_file:
+        - .env
+      networks:
+        - gateway-network
+      labels:
+        - "traefik.enable=true"
+
+        - "traefik.http.services.backend.loadbalancer.server.port=3000"
+
+  backend3:
+      build: ./backend
+      restart: always
+      depends_on:
+        - neo4j
+      env_file:
+        - .env
+      networks:
+        - gateway-network
+      labels:
+        - "traefik.enable=true"
+
+        # API disponible en api.localhost/api/
+        - "traefik.http.routers.backend2.rule=Host(`api.localhost`) && PathPrefix(`/legendary`)"
+        - "traefik.http.routers.backend2.entrypoints=web"
+
+        
+        # Middleware stripPrefix
+        - "traefik.http.middlewares.strip-api.stripprefix.prefixes=/legendary"
+
+        # Aplica el middleware junto a los otros
+        - "traefik.http.routers.backend2.middlewares=strip-api"
+
 
 volumes:
   neo4j_data:

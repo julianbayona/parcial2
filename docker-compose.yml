@@ -37,12 +37,13 @@ services:
     labels:
 
 
-      - "traefik.http.routersdb.traefik.rule=Host(`db.localhost`) && PathPrefix(`/`)"
-      - "traefik.http.routersdb.backend.entrypoints=web"
+      - "traefik.http.routers.traefik.rule=Host(`db.localhost`) && PathPrefix(`/`)"
+      - "traefik.http.routers.db.entrypoints=web"
+      - "traefik.http.services.db.loadbalancer.server.port=7474"
       # Middleware de autenticación básica
       - "traefik.http.middlewares.dashboard-auth.basicauth.users=db:$$2y$$05$$9Io5.3qZkfuBRD0haJhLPON2c9.5G1C2OF0Gkmdew0sWgyFOFv4oO"
-       # Aplicar middlewares
       - "traefik.http.routersdb.traefik.middlewares=dashboard-auth"
+      
 
   backend:
     build: ./backend
